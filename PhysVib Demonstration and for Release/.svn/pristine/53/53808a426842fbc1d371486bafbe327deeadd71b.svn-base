@@ -1,0 +1,38 @@
+package net.jbong.AudioVibDrive;
+
+import java.util.List;
+
+import dynamicsHapticsLibrary.PatternPoint;
+
+public class VibListInfo {
+	List<PatternPoint> patternList;
+	List<Integer> frequencyList;
+	List<Integer> elapsedTimeList;
+	
+	public VibListInfo() {
+		return;
+	}
+	
+	public void releaseLists() {
+		
+		patternList.clear();
+		patternList = null;
+		frequencyList.clear();
+		frequencyList = null;
+		elapsedTimeList.clear();
+		elapsedTimeList = null;
+		
+	}
+	
+	public boolean isFilled() {
+		if (this.patternList != null)
+			return true;
+		else return false;
+	}
+	
+	public void setVibList(List<PatternPoint> pList, List<Integer> fList, List<Integer> eList) {
+		patternList = pList;
+		frequencyList = fList;
+		elapsedTimeList = eList;				
+	}
+}

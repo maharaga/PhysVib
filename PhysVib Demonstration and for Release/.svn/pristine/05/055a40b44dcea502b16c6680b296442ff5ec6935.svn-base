@@ -1,0 +1,227 @@
+package dynamicsHapticsLibrary;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.Contact;
+import com.badlogic.gdx.physics.box2d.ContactListener;
+import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
+
+import com.example.angry.AngryBirds;
+import com.example.angry.AngryBirds.userdata;
+import com.example.angry.StageInformation.ObjectInformation;
+
+import android.app.Activity;
+import android.os.Handler;
+import android.os.Vibrator;
+import android.util.Log;
+
+
+
+public class DynamicsCollisionCatcher extends Activity implements ContactListener {	
+	private List<Contact> m_hapticContactList = new ArrayList<Contact>();
+	private List<Body> focusedBodies = new ArrayList<Body>();	
+	private List<Integer> crushedObjectID = new ArrayList<Integer>();
+	float realToEngineGain = 15f;
+	float thresholdImpulse = 10f;
+	float crashingImpulse = 20f;	
+	float impulseThreshold = 2f;
+	public DynamicsVibrationManager vibrationModule = new DynamicsVibrationManager(0, 0, null);
+	long lastTime = 0;
+	public float gain = 2f;
+	
+	// Constructor
+	public DynamicsCollisionCatcher() {		
+		//vibrationModule.vibrator = contextVibrator;
+	}
+	
+		
+	
+	public void setVibrationInHapticsLibrary(int freq1, int freq2, Vibrator contextVibrator) {
+		vibrationModule = new DynamicsVibrationManager(freq1, freq2, contextVibrator);
+	}
+	// RealToEngineGain setting.
+	// Set this value during making environments is recommended 
+	public void setRealityGain(float realGain) {
+		this.realToEngineGain = realGain;
+	}
+	
+	public collisionData impulse(Contact contact) {
+		// maharaga
+		// Impulse rendering fuction
+		// collisionData consists with an integer (collision type) and an float (impulse strength)
+		Body tempbody1 = contact.getFixtureA().getBody();
+		Body tempbody2 = contact.getFixtureB().getBody();
+		
+		collisionData temporalData = new collisionData();
+		
+		float finalImpulse = 0;
+		temporalData.collisionType = 0; // wall collision
+		// Case of collision with walls
+		if (tempbody1.getMass() == 0f) { // if one of the collided object was wall object, then
+			if ( ((userdata)tempbody1.getUserData()).objectType == AngryBirds.GROUND ||  ((userdata)tempbody1.getUserData()).objectType == AngryBirds.ROOF) {
+				finalImpulse = java.lang.Math.abs(tempbody2.getLinearVelocity().y * 2 * tempbody2.getMass());
+				finalImpulse += java.lang.Math.abs(tempbody2.getAngularVelocity() * tempbody2.getInertia());						
+			}
+			else {
+				finalImpulse = java.lang.Math.abs(tempbody2.getLinearVelocity().x * 2 * tempbody2.getMass());
+				finalImpulse += java.lang.Math.abs(tempbody2.getAngularVelocity() * tempbody2.getInertia());								
+			}
+			if ( ( (userdata)tempbody2.getUserData() ).objectType != AngryBirds.CIRCLE) {
+				finalImpulse /= 5f;
+			}			
+			
+		}
+		else if (tempbody2.getMass() == 0f) {
+			if ( ((userdata)tempbody2.getUserData()).objectType == AngryBirds.GROUND ||  ((userdata)tempbody2.getUserData()).objectType == AngryBirds.ROOF) {
+				finalImpulse = java.lang.Math.abs(tempbody1.getLinearVelocity().y * 2 * tempbody1.getMass());
+				finalImpulse += java.lang.Math.abs(tempbody1.getAngularVelocity() * tempbody1.getInertia());						
+			}
+			else {
+				finalImpulse = java.lang.Math.abs(tempbody1.getLinearVelocity().x * 2 * tempbody1.getMass());
+				finalImpulse += java.lang.Math.abs(tempbody1.getAngularVelocity() * tempbody1.getInertia());								
+			}
+			if ( ( (userdata)tempbody1.getUserData() ).objectType != AngryBirds.CIRCLE) {
+				finalImpulse /= 5f;
+			}			
+		}
+		else { // Collision between balls					
+			
+			finalImpulse = (tempbody1.getLinearVelocity().mul(tempbody1.getMass() - tempbody2.getMass()).add(tempbody2.getLinearVelocity().mul(2* tempbody2.getMass())).mul(1 / (tempbody1.getMass() + tempbody2.getMass()))).add(tempbody1.getLinearVelocity().mul(-1)).len() * tempbody1.getMass();			
+			finalImpulse += (tempbody2.getLinearVelocity().mul(tempbody2.getMass() - tempbody1.getMass()).add(tempbody1.getLinearVelocity().mul(2* tempbody1.getMass())).mul(1 / (tempbody1.getMass() + tempbody2.getMass()))).add(tempbody2.getLinearVelocity().mul(-1)).len() * tempbody2.getMass();
+			finalImpulse += (tempbody2.getAngularVelocity() * (tempbody2.getMass() - tempbody1.getMass()) + (tempbody1.getAngularVelocity() * (2* tempbody1.getMass())) * (1 / (tempbody1.getMass() + tempbody2.getMass()))) + (tempbody2.getAngularVelocity() * -1 * tempbody2.getMass());
+			finalImpulse += (tempbody1.getAngularVelocity() * (tempbody1.getMass() - tempbody2.getMass()) + (tempbody2.getAngularVelocity() * (2* tempbody2.getMass())) * (1 / (tempbody2.getMass() + tempbody1.getMass()))) + (tempbody1.getAngularVelocity() * -1 * tempbody1.getMass());
+			if (( (userdata)tempbody1.getUserData() ).objectType != AngryBirds.WALLS ||  ( (userdata)tempbody2.getUserData() ).objectType != AngryBirds.WALLS) {
+				finalImpulse /= 2f;
+			}
+			else if (finalImpulse <= crashingImpulse)
+				finalImpulse = 0f;
+			
+			temporalData.collisionType = 1;
+			//finalImpulse = (((tempbody1.getLinearVelocity().mul(tempbody1.getMass() - tempbody2.getMass()).add(tempbody2.getLinearVelocity().mul(2* tempbody2.getMass())).mul(1 / (tempbody1.getMass() + tempbody2.getMass()))).sub(tempbody1.getLinearVelocity()))).mul(tempbody1.getMass()).len();
+			//finalImpulse = (((tempbody1.getLinearVelocity().mul(tempbody1.getMass() - tempbody2.getMass()).add(tempbody2.getLinearVelocity().mul(2* tempbody2.getMass())).mul(1 / (tempbody1.getMass() + tempbody2.getMass()))).sub(tempbody1.getLinearVelocity()))).len() * tempbody1.getMass() * 1000f;
+			if ( ( (userdata)tempbody2.getUserData() ).objectType != AngryBirds.CIRCLE && ( (userdata)tempbody1.getUserData() ).objectType != AngryBirds.CIRCLE) {
+				finalImpulse /= 5f;
+			}
+			
+			
+		}
+		//finalImpulse = tempbody1.getLinearVelocity().mul(tempbody1.getMass()).len() + tempbody1.getAngularVelocity() * tempbody1.getInertia();
+		//finalImpulse += tempbody2.getLinearVelocity().mul(tempbody2.getMass()).len() + tempbody2.getAngularVelocity() * tempbody2.getInertia();
+		
+		//if (finalImpulse < 0) finalImpulse *= -1;
+		temporalData.impulse = finalImpulse * gain;
+		//Log.e("maharaga", "Impulse : " + temporalData.impulse);
+		
+		return temporalData;
+	}
+
+	public void calculateImpulse(boolean vibrationOn) {
+		float finalImpulse_Wall = 0f;
+		float finalImpulse_Objects = 0f;
+		int countNumber_Wall = 0;
+		int countNumber_Objects = 0;
+		int collisionType = 0;
+		collisionData temporalData;
+		float collisionImpulse = 0f;
+		float currentImpulse = 0f;		
+    	Body temporalBody;
+    	ObjectInformation temp1 = null;
+    	ObjectInformation temp2 = null;
+
+    	// Calculate the impulse from the contactResult variable	
+		for (int j = 0; j < m_hapticContactList.size(); j++) {
+			// impulse Calculation
+			temporalData = impulse(m_hapticContactList.get(j));
+			//Log.e("maharaga", "Wall : " + temporalData.impulse);			
+			if (temporalData.collisionType == 0 && temporalData.impulse >= impulseThreshold) { // Wall Collision
+				finalImpulse_Wall += temporalData.impulse;
+				countNumber_Wall++;
+				//Log.e("maharaga", "collided : " + temporalData.collisionType + " With an impulse of " + temporalData.impulse);
+			}
+			else if (temporalData.collisionType == 1) {
+				finalImpulse_Objects += temporalData.impulse;
+				countNumber_Objects++;
+				//Log.e("maharaga", "collided : " + temporalData.collisionType + " With an impulse of " + temporalData.impulse);
+			}
+		}
+		if (countNumber_Wall != 0) finalImpulse_Wall /= (float)countNumber_Wall;
+		if (countNumber_Objects != 0) finalImpulse_Objects /= (float)countNumber_Objects;		
+		// Reset the contactResult, because all impulses were calculated
+
+		m_hapticContactList.removeAll(m_hapticContactList);
+		// Gain tuning by realToEngineGain.
+		// this is essential for fit the physical values into the real level.
+		
+    	
+
+		
+		/*
+		if (vibrationOn) {
+			if (finalImpulse_Wall != 0 || finalImpulse_Objects != 0) {
+				if (finalImpulse_Wall > finalImpulse_Objects) {
+					vibrationModule.playVibration(vibrationModule.LG_API, "BothVibration", finalImpulse_Wall/10f, finalImpulse_Wall/10f);				
+					//vibrationModule.playVibration(vibrationModule.LG_API, "ContactVibration", 0.1f, finalImpulse_Wall);
+				}
+				else { 
+					vibrationModule.playVibration(vibrationModule.LG_API, "ContactVibration", 0f, finalImpulse_Objects/2f);
+				}
+			}			
+			else {			
+				vibrationModule.playVibration(vibrationModule.LG_API, "ContactVibration", 0f, 0f);			   	
+			}
+			
+		}
+		else vibrationModule.playVibration(vibrationModule.LG_API, "ContactVibration", 0f, 0f);
+		*/
+		
+		
+	}
+	// Insert a inputBody into the focused body list
+	// To check the contact on the focused objects
+	public void addHapticObjects(Body inputBody){
+		if (!focusedBodies.contains(inputBody))
+			focusedBodies.add(inputBody);
+	}
+
+	// Delete a inputBody into the focused body list
+	// To check the contact on the focused objects
+	public void deleteHapticObjects(Body inputBody){
+		focusedBodies.remove(inputBody);		
+	}
+	
+	public boolean isEqual(Contact arg0, Contact arg1) {
+		if (arg0.getFixtureA().getBody() == arg1.getFixtureB().getBody()) {
+			if (arg0.getFixtureB().getBody() == arg1.getFixtureB().getBody())
+				return true;
+			else return false;
+		}
+		else if (arg0.getFixtureB().getBody() == arg1.getFixtureA().getBody()) {
+			if (arg0.getFixtureA().getBody() == arg1.getFixtureB().getBody())
+				return true;
+			else return false;
+		}		
+		return false;
+	}
+
+	
+
+	@Override
+	public void beginContact(Contact contact) {
+		// TODO Auto-generated method stub
+		if(!m_hapticContactList.contains(contact)) m_hapticContactList.add(contact);
+	}
+
+	@Override
+	public void endContact(Contact contact) {
+		// TODO Auto-generated method stub
+	}
+
+	class collisionData {
+		public int collisionType;
+		public float impulse;		
+	}
+}

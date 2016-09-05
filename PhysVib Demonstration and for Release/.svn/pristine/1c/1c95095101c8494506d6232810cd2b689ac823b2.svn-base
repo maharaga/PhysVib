@@ -1,0 +1,126 @@
+package dynamicsHapticsLibrary;
+import android.os.Vibrator;
+import android.util.Log;
+
+public class DynamicsVibrationManager {
+	private Vibrator vibrator;
+	public static final int LG_API = 1;
+	public static final int IVS_API = 2;
+	public int currentRemainedVibrationTime = 0;
+	public int currentVibrationSystem = 0;
+	public float currentAmpGain = 0;
+	public float currentVibrationPattern[][];
+	public int currentIndex = 0;
+	IVS_TimelinePattern currentTimelinePattern;
+	IVS_Pattern currentIvsPattern;
+	
+
+	   
+	final int OneFreqOnePeriod = 0;	
+	VibrationSystemIVS VibrationSystem_IVS = null;
+	
+
+	
+	// Constructor
+	public DynamicsVibrationManager (int freq1, int freq2, Vibrator contextVibrator) {		
+		vibrator = contextVibrator;	
+		
+    	// Sample Pattern Addition for LG API
+		
+		new Thread() {
+			@Override
+			public void run() {
+				try {
+					float amp = 0;
+					double temp = 0;
+					boolean zeroToggle = false;
+					IVS_Pattern tempPattern = null;
+					while(true) {
+						Thread.sleep(10);
+						if (currentVibrationSystem == 0) continue;
+						if (currentRemainedVibrationTime <= 0) {
+							if (currentVibrationSystem == IVS_API) {
+								if (zeroToggle) {
+									VibrationSystem_IVS.playVibration(vibrator, "Stop", 0, 0);
+									zeroToggle = false;
+								}							
+							}
+						}						
+						else { // Loops into in every 10 ms							
+							if (currentVibrationSystem == IVS_API) {
+								currentRemainedVibrationTime -= 10;
+								if (currentRemainedVibrationTime < 0) {
+									currentRemainedVibrationTime = 0;
+									VibrationSystem_IVS.playVibration(vibrator, "Stop", 0, 0);
+									continue;
+								}
+								if (currentTimelinePattern != null) {									
+									//tempPattern = VibrationSystem_IVS.loadedPattern.findPattern((currentTimelinePattern.getPattern(currentIndex * 10)).patternName);
+									
+									VibrationSystem_IVS.playVibration(IVS_API, currentTimelinePattern.timelinePatternName, currentIndex, true);
+									//VibrationSystem_IVS.playVibration(vibrator, amp);									 
+									currentIndex++;
+								}
+								else if (currentIvsPattern != null) {
+									VibrationSystem_IVS.playVibration(IVS_API, currentIvsPattern.patternName, currentIndex);
+									
+									//VibrationSystem_IVS.playVibration(vibrator, amp);
+									currentIndex++;									
+								}		
+								
+								if (currentRemainedVibrationTime <= 0) zeroToggle = true;
+							}
+						}
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}.start();
+	}
+	
+    public void playVibration(int vibrationSystem, int patternTime, float amplitude[][]) {
+    	if (vibrationSystem == IVS_API) {
+    		if (VibrationSystem_IVS == null)
+    			VibrationSystem_IVS = new VibrationSystemIVS();
+    		
+    		currentVibrationSystem = vibrationSystem;
+    		currentRemainedVibrationTime = patternTime;
+    		currentVibrationPattern = amplitude;    		
+    		currentIndex = 0;
+      	}
+    }
+    public void playVibration(int vibrationSystem, String patternName, float patternTime, float amplitudeGain) {
+    	if (currentRemainedVibrationTime > 0) return;
+    	if (vibrationSystem == IVS_API) {
+    		
+    		
+    		if (VibrationSystem_IVS == null)
+    			VibrationSystem_IVS = new VibrationSystemIVS();
+  		
+    		currentTimelinePattern = VibrationSystem_IVS.loadedPattern.findTimePattern(patternName);
+    		if (currentTimelinePattern == null) {
+    			currentIvsPattern = VibrationSystem_IVS.loadedPattern.findPattern(patternName);    			
+    			if (currentIvsPattern == null) {
+    				currentRemainedVibrationTime = 0;
+    				return;
+    			}
+    			currentRemainedVibrationTime = (int)(currentIvsPattern.F.size() * 10 * patternTime);
+    			//VibrationSystem_IVS.setFrequency(currentIvsPattern.freq);
+    		}
+    		else {
+    			currentRemainedVibrationTime = currentTimelinePattern.duration;    			
+    		}
+    		
+    		currentVibrationSystem = vibrationSystem;
+    		currentAmpGain = amplitudeGain;
+    		
+    		
+    		currentIndex = 0;
+    		
+    		Log.i("ma", "Remained Time: " + currentRemainedVibrationTime + ", Amp: " + amplitudeGain);
+    
+      	}    	
+    }    
+    
+}

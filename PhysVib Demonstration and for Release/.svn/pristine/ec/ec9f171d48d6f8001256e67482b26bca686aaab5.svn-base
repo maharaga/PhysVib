@@ -1,0 +1,15 @@
+package dynamicsHapticsLibrary;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class IVS_Pattern {
+	int freq;
+	List<PatternPoint> F;
+	
+	String patternName;
+	
+	IVS_Pattern() {
+		F = new ArrayList<PatternPoint>();		
+	}
+}

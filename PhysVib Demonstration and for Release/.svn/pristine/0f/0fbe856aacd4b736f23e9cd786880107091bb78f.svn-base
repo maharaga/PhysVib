@@ -1,0 +1,6 @@
+package dynamicsHapticsLibrary;
+	
+public class PatternPoint {
+		public long timePoint;
+		public double ampPoint;
+}

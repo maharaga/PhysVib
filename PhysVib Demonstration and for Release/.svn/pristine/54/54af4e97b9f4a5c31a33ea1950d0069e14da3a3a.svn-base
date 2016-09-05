@@ -1,0 +1,32 @@
+package net.jbong.AudioVibDrive;
+
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
+
+class MyAudioTrack extends AudioTrack {
+	private short[] mMergeBuf;
+	
+	public static final int SAMPLE_RATE = 44100;
+
+	public MyAudioTrack(int mode, int bufferSize) {
+		super(AudioManager.STREAM_MUSIC, SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT,
+				Math.max(AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT), bufferSize * 2), mode);
+		
+		mMergeBuf = new short[bufferSize * 2];
+	}
+	
+	public int getFrameCount() {
+		return getNativeFrameCount();
+	}
+	
+	public void write(short[] left, short[] right, int sizeInShorts) {
+		for (int i = 0; i < sizeInShorts; i++) {
+			final int t = i * 2;
+			mMergeBuf[t] = left[i];
+			mMergeBuf[t+1] = right[i];
+		}
+		
+		super.write(mMergeBuf, 0, sizeInShorts * 2);
+	}
+}

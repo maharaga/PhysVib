@@ -1,0 +1,303 @@
+package dynamicsHapticsLibrary;
+import net.jbong.AudioVibDrive.*;
+import net.jbong.AudioVibDrive.VibListInfo;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import android.os.Environment;
+import android.os.Vibrator;
+import android.util.Log;
+
+import org.jdom.Attribute;
+
+
+import org.jdom.Element;
+
+
+
+
+public class VibrationSystemIVS extends VibrationSystemBase {
+    public VibrationSystemIVSPatterns loadedPattern;
+    final String XmlPatternFileName = new String(Environment.getExternalStorageDirectory().getAbsolutePath() + "/IVSPattern2.ivs");
+    AudioVibDriveStatic vibrationPlayer;
+    AudioVibDriveContinuous vibrationPlayerCont;
+    public VibListInfo vibListInfo = new VibListInfo();
+    //AudioVibDriveContinuous vibrationPlayer;
+    
+    
+    VibrationSystemIVS() {
+    	loadedPattern = new VibrationSystemIVSPatterns();    	
+    	vibrationPlayer = new AudioVibDriveStatic();
+    	vibrationPlayerCont = new AudioVibDriveContinuous(10);    
+    	
+    	
+        this.loadVibrationFromXML();        
+    }
+    
+    
+    public boolean loadVibrationFromXML () {
+    	// Get the parse tree from the file with the name of XmlPatternFileName
+    	List<Element> temp = new ArrayList<Element>();
+    	
+    	temp = loadVibration(XmlPatternFileName);
+    	
+    	if (temp == null) return false;
+
+    	if (temp.size() == 0) {
+    		return false;    		
+    	}
+    	
+    	Element root = temp.get(0);
+    	// Get the children nodes of the current parents
+    	    	
+    	if (root.getName() != "ivs-file") return false;
+    	
+        // 현재의 parent 에 해당하는 element의 자식들!을 가져온다.
+        List list = root.getChildren();
+        // children을 Iterator에 담음...
+        Iterator it = list.iterator();
+        
+        while(it.hasNext()) { // mainRoot Loop                
+            String key=null;
+            String value=null;
+            
+
+            Element e = (Element)it.next();            
+            if (e.getName() == "effects") {
+            	List patternList = e.getChildren();
+            	Iterator patternIt = patternList.iterator();
+            	String currentPatternName = new String("");
+            	
+            	while (patternIt.hasNext()) {
+	            	Element pattern = (Element) patternIt.next();
+	            	List patternAttList = pattern.getAttributes();
+	            	Log.i("ma", pattern.getName() + " For Check");
+            		String patternName = null;
+            		String patternType = null;
+            		int duration = 0;
+            		int magnitude = 0;
+            		String waveform = null;
+            		int period = 0;
+            		String style = null;
+            		int attackTime = 0;
+            		int fadeTime = 0;            			           
+	            	int saveCount = 0;
+	            	int attackLevel = 0;
+	            	int fadeLevel = 0;
+	            	
+	            	if (pattern.getName() == "basis-effect") { // For the Basis-Effect Pattern
+	            		saveCount = 0;
+	            		
+	            		Iterator basisPatternList = patternAttList.iterator();
+	            		while (basisPatternList.hasNext()) {
+	            			Attribute at = (Attribute)(basisPatternList.next());	            			
+	            			if (at.getName() == "name") {
+	            				patternName = (at.getValue()).trim();
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "type") {
+	            				patternType = (at.getValue()).trim();
+	            				if (patternType.equals("periodic") == false)
+	            					break;
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "duration") {
+	            				duration = Integer.parseInt((at.getValue()).trim());
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "magnitude") {
+	            				magnitude = Integer.parseInt((at.getValue()).trim());
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "waveform") {
+	            				waveform = (at.getValue()).trim();
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "period") {
+	            				period = Integer.parseInt((at.getValue()).trim());
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "style") {
+	            				style = (at.getValue()).trim();
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "attack-time") {
+	            				attackTime = Integer.parseInt((at.getValue()).trim());
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "fade-time") {
+	            				fadeTime = Integer.parseInt((at.getValue()).trim());
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "attack-level") {
+	            				attackLevel = Integer.parseInt((at.getValue()).trim());
+	            				saveCount++;
+	            			}
+	            			else if (at.getName() == "fade-level") {
+	            				attackLevel = Integer.parseInt((at.getValue()).trim());
+	            				saveCount++;
+	            			}	            				            	
+	            		}
+	            		if (saveCount > 5) { // Data were read completely
+	            			loadedPattern.addPattern(patternName);
+	            			float attackSlope = ((float)magnitude - (float)attackLevel) / (float)attackTime;
+	            			float fadeSlope = ((float)fadeLevel - (float)magnitude) / (float)fadeTime;
+	            			loadedPattern.addFreq(patternName, 1000 / period);
+	            			
+	            			for (int i = 0; i < duration;) {
+	            				if (i < attackTime){
+	            					loadedPattern.addPatternPoint(patternName, (i / 10), ((float)attackLevel + (float)i * (float)attackSlope) / 10000.0);	            					
+	            				}
+	            				else if (i >= (duration - fadeTime)) {
+	            					loadedPattern.addPatternPoint(patternName, (i / 10), ((float)magnitude + (float)(i - duration + fadeTime) * (float)fadeSlope) / 10000.0);	            						            				
+	            				}
+	            				else {
+	            					loadedPattern.addPatternPoint(patternName, (i / 10), (float)magnitude / 10000.0);
+	            				}
+	            				i += 10;
+	            			}	            			
+	            		}
+	            	}
+	            	else if (pattern.getName() == "timeline-effect") { // For the timeline effect pattern
+	            		Iterator timelinePatternList = patternAttList.iterator();
+	            		saveCount = 0;
+	            		while (timelinePatternList.hasNext()) {
+	            			Attribute at = (Attribute)(timelinePatternList.next());	            			
+	            			if (at.getName() == "name") {
+	            				patternName = (at.getValue()).trim();
+	            				saveCount++;
+	            			}	            			
+	            		}
+	            		
+	            		if (saveCount == 1) { // timeline effect has its name, and it's valid
+	                    	List timelineList = pattern.getChildren();
+	                    	Iterator timelineIt = timelineList.iterator();
+	                    	IVS_TimelinePattern tempTime = null;
+	                    	boolean added = false;
+
+	                    	while (timelineIt.hasNext()) {
+	        	            	Element timelinePattern = (Element) timelineIt.next();
+	        	            	List timelinePatternAttList = timelinePattern.getAttributes();
+	        	            	
+	        	            	if (timelinePattern.getName() == "launch-event") {
+	        	            		saveCount = 0;
+		    	            		Iterator timePatternList = timelinePatternAttList.iterator();
+		    	            		while (timePatternList.hasNext()) {
+		    	            			Attribute at = (Attribute)(timePatternList.next());	            			
+		    	            			if (at.getName() == "effect") {
+		    	            				patternType = (at.getValue()).trim();
+		    	            				saveCount++;
+		    	            			}
+		    	            			else if (at.getName() == "time") {
+		    	            				duration = Integer.parseInt((at.getValue()).trim());
+		    	            				saveCount++;
+		    	            			}
+		    	            		}
+		    	            		if (saveCount == 2) { // successfully loaded
+		    	            			tempTime = loadedPattern.addTimePattern(patternName);
+		    	            			tempTime.addTimePatternPoint(patternType, duration);
+		    	            			added = true;
+		    	            		}
+
+	        	            	}
+	                    	}
+	                    	if (added) {
+	                    		int max = -9999;
+	                    		int calculatedTime = 0;
+	                    		for (int i = 0; i < tempTime.size; i++) {
+	                    			if (loadedPattern.getPattern(tempTime.patterns.get(i).patternName) != null) {
+	                    				calculatedTime = (tempTime.patterns.get(i).launchTime) + ((loadedPattern.getPattern(tempTime.patterns.get(i).patternName)).F.size() - 1) * 10;
+	                    			}	                    			
+	                    			if (max < calculatedTime)
+	                    				max = calculatedTime;
+	                    		}
+	                    		added = false;
+	                    		tempTime.duration = max;	                    		
+	                    	}
+	            		}
+	            	}	            	
+	            }
+            }
+        }       
+        return true;
+    }
+
+     
+
+    
+    public void playVibration(int vibrator, String PatternName, int index, boolean timelinePattern) {
+    	List<Integer> frequencyList = new ArrayList<Integer>();
+    	List<Integer> elapsedTimeList = new ArrayList<Integer>();
+    	if (vibrator == DynamicsVibrationManager.IVS_API) {
+	    	if (timelinePattern) {
+	    		Log.i("ma", "Progress Time: " + index * 10);
+	    		List<PatternPoint> currentTimelineData = loadedPattern.getTimeLineData(PatternName, index, frequencyList, elapsedTimeList);	    		
+	    		//vibrationPlayer.vibrate(currentTimelineData, frequencyList, elapsedTimeList);
+	    		
+	    		if (!vibrationPlayerCont.isRunning()) {
+	    			vibrationPlayerCont = new AudioVibDriveContinuous(10);	    			
+	    		}
+	    		vibrationPlayerCont.listInfo.setVibList(currentTimelineData, frequencyList, elapsedTimeList);
+	    		Log.i("ma", "Vibration Count: " + currentTimelineData.size());
+	    		
+	    	}	
+    	}    	    
+    }
+
+    public void playVibration(int vibrator, String PatternName, int index) {
+    	List<Integer> frequencyList = new ArrayList<Integer>();
+    	List<Integer> elapsedTimeList = new ArrayList<Integer>();    	
+    	List<PatternPoint> patternPoint = new ArrayList<PatternPoint>();
+    	if (vibrator == DynamicsVibrationManager.IVS_API) {    		
+    		IVS_Pattern temp = loadedPattern.getPattern(PatternName);
+    		
+    		patternPoint.add(temp.F.get(index));
+    		elapsedTimeList.add(index);
+    		frequencyList.add(temp.freq);
+
+    		if (!vibrationPlayerCont.isRunning()) {
+    			vibrationPlayerCont = new AudioVibDriveContinuous(10);	    			
+    		}
+    		
+    		Log.i("ma", "isFilling");
+    		vibrationPlayerCont.listInfo.setVibList(patternPoint, frequencyList, elapsedTimeList);
+    		
+    		
+    		//vibrationPlayer.vibrate(temp.freq, temp.F.get(index).ampPoint, 10);
+    		//vibrationPlayerCont
+    		//Log.i("ma", "Vibration Count: " + currentTimelineData.size());
+    		
+    	}    	
+    
+    }
+    
+
+    public void playVibration(Vibrator vibrator, String PatternName, float amp1, float amp2) {
+    	int i = 0;
+    	
+    	/*
+    	long[] tPatF1 = new long[playPattern.F1.size()];
+        int[] fPatF1 = new int[playPattern.F1.size()];
+        long[] tPatF2 = new long[playPattern.F2.size()];
+        int[] fPatF2 = new int[playPattern.F2.size()];
+    	
+
+        // Applying gain values
+        
+    	for (i = 0; i < tPatF1.length; i++)
+    		tPatF1[i] = (long)((float)(playPattern.F1.get(i)).timePoint * gainTime);         
+        for (i = 0; i < fPatF1.length; i++) {
+        	if ((float)(playPattern.F1.get(i)).ampPoint * gainAmplitude > 255f) fPatF1[i] = 255;
+        	else fPatF1[i] = (int)((playPattern.F1.get(i)).ampPoint * gainAmplitude); 
+        }
+    	for (i = 0; i < tPatF2.length; i++)
+    		tPatF2[i] = (long)((float)(playPattern.F2.get(i)).timePoint * gainTime);         
+        for (i = 0; i < fPatF2.length; i++) {
+        	if ((float)(playPattern.F2.get(i)).ampPoint * gainAmplitude > 255f) fPatF2[i] = 255;
+        	else fPatF2[i] = (int)((playPattern.F2.get(i)).ampPoint * gainAmplitude); 
+        }
+        */        
+    }    
+ }

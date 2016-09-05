@@ -1,0 +1,290 @@
+package com.example.angry;
+
+import java.util.ArrayList;
+import java.util.List;
+import com.badlogic.gdx.math.Vector2;
+
+
+
+import android.util.Log;
+
+public class StageInformation {	
+	/* Each Objects need position, (width, height / radius), density, restitution, friction, mass */	
+	public class ObjectInformation {
+		Vector2 position;
+		float width, height;
+		float radius, density, restitution, friction, mass;
+		int objectType; // -1 - nothing, 0 - lowerGround, 1 - UpperGround, 2 - woods, 10 - pigs, 11 - birds 
+		int shapeType; // -1 - nothing, 0 - rectangle, 1 - circle
+		int ID;
+		boolean hapticEnabled;
+		float impulseValue;
+		Vector2 prevVelocity;
+		float durability;
+		
+		ObjectInformation() {
+			position = new Vector2(-1f, -1f);
+			width = -1;
+			height = -1;
+			radius = -1;
+			density = -1;
+			restitution = -1;
+			friction = - 1;
+			mass = -1;
+			objectType = -1;
+			shapeType = -1;
+			ID = -1;
+			hapticEnabled = false;
+			impulseValue = 0f;
+			prevVelocity = new Vector2 (0f,0f);
+			durability = -1;
+		}
+		
+		
+		void setHaptic(boolean enable) {
+			hapticEnabled = enable;		
+		}
+		
+		public void setImpulse(float impulse) {
+			impulseValue = impulse;		
+		}
+		
+		public void setPrevVelocity(Vector2 inVelocity) {
+			prevVelocity.set(inVelocity);
+		}
+		
+		void setID(int inputID) {
+			ID = inputID;			
+		}
+		
+		void setPosition(Vector2 inVector) {
+			position.set(inVector);
+		}
+		
+		void setWidth(float inWidth) {
+			width = inWidth;
+		}
+		
+		void setHeight(float inHeight) {
+			height = inHeight;
+		}
+		
+		void setRadius(float inRadius) {
+			radius = inRadius;
+		}
+		
+		void setDensity(float inDensity) {
+			density = inDensity;
+		}
+		
+		void setRestitution(float inRestitution) {
+			restitution = inRestitution;
+		}
+		
+		void setFriction(float inFriction) {
+			friction = inFriction;
+		}
+		
+		void setMass(float inMass) {
+			mass = inMass;
+		}
+		
+		void setDurability(float inDur) {
+			durability = inDur;
+		}
+		
+		void setObjectType(int inObjectType){
+			objectType = inObjectType;
+			if (objectType != -1 && objectType >= 10) { // if object is a type of pigs or birds,
+				shapeType = 1;
+			}
+			else shapeType = 0;
+		}		
+		
+		Vector2 getPosition() {
+			return position;
+		}
+
+		float getWidth() {
+			return width;
+		}
+		
+		float getHeight() {
+			return height;
+		}
+		
+		float getRadius() {
+			return radius;
+		}
+		
+		float getDensity() {
+			return density;
+		}
+		
+		float getRestitution() {
+			return restitution;
+		}
+		
+		float getFriction() {
+			return friction;
+		}
+		
+		float getMass() {
+			return mass;
+		}
+		
+		int getObjectType(){
+			return objectType;
+		}
+		
+		int getShapeType() {
+			return shapeType;
+		}
+		
+		public int getID() {
+			return ID;
+		}
+		
+		public boolean getEnable() {
+			return hapticEnabled;
+		}
+		
+		public float getImpulse() {
+			return impulseValue;
+		}
+		
+		public Vector2 getPrevVelocity() {
+			return prevVelocity.cpy();
+		}
+		
+		public float getDurability() {
+			return durability;
+		}
+	}
+	public List<ObjectInformation> stage;
+	
+	
+	void freeInformation() {
+		stage.clear();
+	}
+	
+	void stageInformationLoading(int CAMERA_HEIGHT, int CAMERA_WIDTH, int stageNumber) {		
+		int i = 0;
+		int j = 0;
+		int IDcount = -1;
+		float tick_X = CAMERA_HEIGHT / 40f;
+		float tick_Y = CAMERA_WIDTH / 20f;
+		
+		stage = new ArrayList<ObjectInformation>();
+		
+		
+		// lower and upper ground
+		ObjectInformation temp = new ObjectInformation();
+
+		// Birds
+		for (i = 0; i < 1; i++) {
+			temp = new ObjectInformation();
+			
+			//temp.setPosition((new Vector2()).set((float)(CAMERA_WIDTH / 2.0 - tick_X * 10 ), (float)(tick_Y * (0.5 + i))));			
+			temp.setPosition((new Vector2()).set((float)(CAMERA_WIDTH / 2.0 - tick_X * 10 ), (float)(tick_Y * 10)));
+			temp.setObjectType(11);
+			temp.setRadius(tick_X);
+			temp.setDensity(100f);
+			temp.setFriction(0.8f);
+			temp.setRestitution(0.1f);
+			IDcount++;
+			temp.setID(IDcount);
+			temp.setHaptic(true);
+			
+			temp.setDurability(30f);
+			
+			stage.add(temp);
+			
+			temp = new ObjectInformation();
+		}	
+		
+		// Pigs
+		
+		for (i = 0; i < 1; i++) {
+			for (j = 0; j < 5; j++) {
+				temp = new ObjectInformation();
+				
+				temp.setPosition((new Vector2()).set((float)(CAMERA_WIDTH / 2.0 + tick_X + j * tick_X * 5 ), (float)(i * (tick_Y * 2.6f))));
+				
+				temp.setObjectType(9);
+				temp.setHeight(tick_Y);
+				temp.setWidth(tick_X*2f);
+				temp.setDensity(30f);
+				temp.setFriction(0.5f);
+				IDcount++;
+				temp.setID(IDcount);
+				temp.setHaptic(true);
+				temp.setDurability(40f);
+				temp.setRestitution(0f);
+				stage.add(temp);
+			}						
+		}
+		
+		// Walls
+		for (i = 0; i < 1; i++) {
+			for (j = 0; j < 6; j++) {
+				if (j != 5) {
+					temp = new ObjectInformation();
+					
+					temp.setPosition((new Vector2()).set((float)(CAMERA_WIDTH / 2.0 + j * tick_X * 5 ), (float)(i * (tick_Y * 2.6f))));
+					temp.setObjectType(2);
+					temp.setHeight(tick_Y * 2f);
+					temp.setWidth(tick_X);
+					temp.setDensity(30f - 10*i);
+					temp.setFriction(0.5f);
+					IDcount++;
+					temp.setID(IDcount);
+					temp.setHaptic(true);
+					temp.setRestitution(0f);
+					
+					temp.setDurability(40f);
+					
+					stage.add(temp);
+				}					
+				if (j != 0) {
+					temp = new ObjectInformation();
+					
+					temp.setPosition((new Vector2()).set((float)(CAMERA_WIDTH / 2.0 + j * tick_X * 5 - tick_X), (float)(i * (tick_Y * 2.6f))));
+					temp.setObjectType(2);
+					temp.setHeight(tick_Y * 2f);
+					temp.setWidth(tick_X);
+					temp.setDensity(30f - 10*i);
+					temp.setFriction(0.5f);
+					IDcount++;
+					temp.setID(IDcount);
+					temp.setHaptic(true);
+					temp.setRestitution(0f);
+					
+					temp.setDurability(40f);
+					
+					stage.add(temp);
+				}
+				
+			}
+			
+			
+			for (j = 0; j < 5; j++) {
+				temp = new ObjectInformation();
+				
+				temp.setPosition((new Vector2()).set((float)(CAMERA_WIDTH / 2.0 + j * tick_X * 5 ), (float)(tick_Y * 2 + i * (tick_Y * 2.6f))));
+				
+				temp.setObjectType(2);
+				temp.setHeight(tick_Y/2f);
+				temp.setWidth(tick_X*5f);
+				temp.setDensity(30f - 10*i);
+				temp.setFriction(0.5f);
+				IDcount++;
+				temp.setID(IDcount);
+				temp.setHaptic(true);
+				temp.setDurability(40f);
+				temp.setRestitution(0f);
+				stage.add(temp);
+			}						
+		}		
+	}
+}

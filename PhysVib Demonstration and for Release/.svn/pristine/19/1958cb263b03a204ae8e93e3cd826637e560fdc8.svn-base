@@ -1,0 +1,38 @@
+package dynamicsHapticsLibrary;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import android.R;
+import android.content.res.Resources;
+import android.util.Log;
+
+import org.jdom.Document;
+import org.jdom.Element;
+import org.jdom.input.SAXBuilder;
+ 
+
+
+public class VibrationSystemBase {
+    public List<Element> loadVibration(String FileName) {
+    	List<Element> temp = new ArrayList<Element>();
+		SAXBuilder builder = new SAXBuilder();
+		Document doc = new Document();
+    	
+    	try {
+    		doc = builder.build(new File(FileName));
+    		
+    		Element root = doc.getRootElement();
+    		temp.add(root);
+    		
+    		return temp;     		
+    	}
+    	catch (Exception e) {
+    		Log.i("trace", "Exception(toString) : " + e.toString());
+    		Log.i("trace", "Exception(getMessage) : " + e.getMessage());
+    		
+    		return null;
+    	}
+    }
+}

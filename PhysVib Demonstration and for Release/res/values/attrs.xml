@@ -1,0 +1,51 @@
+<resources>
+<declare-styleable name="MyAbsoluteLayout_Layout">
+	<attr name="layout_x" format="dimension" />
+	<attr name="layout_y" format="dimension" />
+</declare-styleable>
+<declare-styleable name="MyHorizontalGridView">
+	<attr name="horizontalSpacing" format="dimension" />
+	<attr name="minVerticalSpacing" format="dimension" />
+	<attr name="childWidth" format="dimension" />
+	<attr name="childHeight" format="dimension" />
+</declare-styleable>
+<declare-styleable name="MyOutlineTextView">
+	<attr name="text" format="string" localization="suggested" />
+	<attr name="textSize" format="dimension" />
+	<attr name="fillColor" format="color" />
+	<attr name="outlineColor" format="color" />
+</declare-styleable>
+<declare-styleable name="MyContextLayout">
+	<attr name="basePosDX" format="dimension" />
+	<attr name="basePosDY" format="dimension" />
+	<attr name="regionWidth" format="dimension" />
+	<attr name="regionHeight" format="dimension" />
+</declare-styleable>
+<declare-styleable name="MyContextLayout_Layout">
+	<attr name="layout_dx" format="dimension" />
+	<attr name="layout_dy" format="dimension" />
+</declare-styleable>
+<declare-styleable name="MyGraphView">
+    <attr name="sampleNum" format="integer" />
+    <attr name="vMin" format="float" />
+    <attr name="vMax" format="float" />
+    <attr name="dMin" format="float" />
+    <attr name="dMax" format="float" />
+    <attr name="useChannel_1" format="boolean" />
+    <attr name="useChannel_2" format="boolean" />
+    <attr name="useChannel_3" format="boolean" />
+    <attr name="strokeWidth_1" format="float" />
+    <attr name="strokeWidth_2" format="float" />
+    <attr name="strokeWidth_3" format="float" />
+    <attr name="color_1" format="color" />
+    <attr name="color_2" format="color" />
+    <attr name="color_3" format="color" />
+</declare-styleable>
+<declare-styleable name="MyMixBarView">
+    <attr name="maxValue" format="float" />
+    <attr name="barColor_1" format="color" />
+    <attr name="barColor_2" format="color" />
+    <attr name="strokeColor" format="color" />
+    <attr name="strokeWidth" format="integer" />
+</declare-styleable>
+</resources>

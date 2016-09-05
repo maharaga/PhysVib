@@ -1,0 +1,138 @@
+package net.jbong.AudioVibDrive;
+
+import java.util.Arrays;
+import java.util.List;
+
+import dynamicsHapticsLibrary.PatternPoint;
+
+// Using stereo signal, drive audio and vibration actuator simultaneously
+// Audio: left
+// Vibration: right
+abstract public class AudioVibDrive {
+	protected MyAudioTrack mAudioTrack = null;
+	
+	protected short[] mAudioBuffer;
+	protected short[] mVibBuffer;
+	
+	public static short convertAmp(double amp) {
+		return (short)(amp * Short.MAX_VALUE);
+	}
+	
+	public static int getSampleRate() {
+		return MyAudioTrack.SAMPLE_RATE;
+	}
+	
+	protected static double getSafeAmp(double amp) {
+		if (amp < 0.0)
+			return 0.0;
+		else if (amp > 1.0)
+			return 1.0;
+		else
+			return amp;
+	}
+
+	protected static double[] getSafeAmp(double amp1, double amp2) {
+		double[] rAmp = new double[2];
+
+		amp1 = getSafeAmp(amp1);
+		amp2 = getSafeAmp(amp2);
+		
+		final double sumAmp = amp1 + amp2;
+		if (sumAmp > 1.0) {
+			final double ratio = 1.0 / sumAmp;
+			rAmp[0] = amp1 * ratio;
+			rAmp[1] = amp2 * ratio;
+		}
+		else {
+			rAmp[0] = amp1;
+			rAmp[1] = amp2;
+		}
+		
+		return rAmp;
+	}
+	
+	protected static int getSafeFreq(int freq) {
+		if (freq < 100)
+			return 100;
+		else if (freq > 300)
+			return 300;
+		else
+			return freq;
+	}
+
+	protected void initBuf(int bufferSize) {
+		mAudioBuffer = new short[bufferSize];
+		mVibBuffer = new short[bufferSize];
+		Arrays.fill(mAudioBuffer, (short)0);
+		Arrays.fill(mVibBuffer, (short)0);
+	}
+	
+	int generateVibSignal(int freq, double amp, int sampleSize) {
+		freq = getSafeFreq(freq);
+		amp = getSafeAmp(amp);
+		
+		for (int i = 0; i < sampleSize; i++)
+			mVibBuffer[i] = (short)(convertAmp(amp) * Math.sin(2.0 * Math.PI * freq * ((double)i / (double)MyAudioTrack.SAMPLE_RATE)));
+		mVibBuffer[sampleSize - 1] = 0;
+		
+		return sampleSize;
+	}
+	
+	int generateVibSignal(int freq1, int freq2, double amp1, double amp2, int sampleSize) {
+		freq1 = getSafeFreq(freq1);
+		freq2 = getSafeFreq(freq2);
+		double[] amp = getSafeAmp(amp1, amp2);
+		amp1 = amp[0];
+		amp2 = amp[1];
+		
+		for (int i = 0; i < sampleSize; i++) {
+			mVibBuffer[i] = (short)(convertAmp(amp1) * Math.sin(2.0 * Math.PI * freq1 * ((double)i / (double)MyAudioTrack.SAMPLE_RATE)));
+			mVibBuffer[i] += (short)(convertAmp(amp2) * Math.sin(2.0 * Math.PI * freq2 * ((double)i / (double)MyAudioTrack.SAMPLE_RATE)));
+		}
+		mVibBuffer[sampleSize - 1] = 0;
+		
+		return sampleSize;
+	}
+	
+	int generateVibSignal(List<PatternPoint> patternList, List<Integer> frequencyList, List<Integer> elapsedTimeList, int sampleSize) {
+		int freq;
+		double finalAmp = 0;
+		
+		if (patternList == null) {
+			for (int i = 0; i < sampleSize; i++) {
+				mVibBuffer[i] = 0;
+			}
+			return 0;
+		}
+		
+		
+		PatternPoint tempPoint;
+		for (int i = 0; i < patternList.size(); i++) {
+			tempPoint = patternList.get(i);
+			finalAmp += tempPoint.ampPoint;						
+		}
+		if (finalAmp >= 1.0) {
+			final double ratio = 1.0 / finalAmp;
+			for (int i = 0; i < patternList.size(); i++) {
+				tempPoint = patternList.get(i);
+				tempPoint.ampPoint *= ratio;
+				patternList.set(i,  tempPoint);
+			}			
+		}
+		
+		
+		for (int j = 0; j < patternList.size(); j++) {
+			double referenceTime = elapsedTimeList.get(j) * 10 * MyAudioTrack.SAMPLE_RATE / 1000;
+			freq = getSafeFreq(frequencyList.get(j));
+			for (int i = 0; i < sampleSize; i++) {
+				if (j == 0) mVibBuffer[i] = 0;
+				
+				mVibBuffer[i] += (short)(convertAmp(patternList.get(j).ampPoint) * Math.sin(2.0 * Math.PI * freq * ((double)(i) / (double)MyAudioTrack.SAMPLE_RATE)));
+			}
+		}
+		mVibBuffer[sampleSize - 1] = 0;
+			
+		
+		return sampleSize;
+	}	
+}

@@ -1,0 +1,131 @@
+package dynamicsHapticsLibrary;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.util.Log;
+
+import dynamicsHapticsLibrary.IVS_TimelinePattern.TimelinePatternPoint;
+
+
+class VibrationSystemIVSPatterns {
+	List<IVS_TimelinePattern> timePatterns;	
+	List<IVS_Pattern> patterns;   
+	
+	VibrationSystemIVSPatterns() {
+		patterns = new ArrayList<IVS_Pattern>();
+		timePatterns = new ArrayList<IVS_TimelinePattern>();		
+		IVS_Pattern newPattern = new IVS_Pattern(); 
+		patterns.add(newPattern);		
+	}
+	
+	protected IVS_Pattern findPattern(String name) {
+		IVS_Pattern checkPattern;
+		for (int i = 0; i < patterns.size(); i++) {
+			checkPattern = patterns.get(i);
+			if (checkPattern.patternName != null) {
+ 				if (checkPattern.patternName.equals(name)) {
+					return checkPattern;
+				}
+			}
+		}
+		return null;		
+	}
+
+	protected IVS_TimelinePattern findTimePattern(String name) {
+		IVS_TimelinePattern checkPattern;
+		for (int i = 0; i < timePatterns.size(); i++) {
+			checkPattern = timePatterns.get(i);
+			if (checkPattern.timelinePatternName != null) {
+ 				if (checkPattern.timelinePatternName.equals(name)) {
+					return checkPattern;
+				}
+			}
+		}
+		return null;		
+	}
+	
+	public List<PatternPoint> getTimeLineData(String timePatternName, int index, List<Integer> frequencyList, List<Integer> elapsedTimeList) {
+		IVS_TimelinePattern checkPattern = findTimePattern(timePatternName);
+		IVS_Pattern detailedPattern;
+		TimelinePatternPoint tempPoint;
+		List<PatternPoint> currentTimelinePatternIndex;
+		if (!checkPattern.sorted) checkPattern.sortTimePatternPoint();
+		
+		double count = 0;
+		currentTimelinePatternIndex = new ArrayList<PatternPoint>();
+		
+		for (int i = 0; i < checkPattern.size; i++) {
+			double duration;
+			int currentIndex = 0;
+			tempPoint = checkPattern.patterns.get(i);
+			detailedPattern = findPattern(tempPoint.patternName);				
+			duration = detailedPattern.F.size();
+			
+			currentIndex = index - tempPoint.launchTime / 10;
+			
+			if (currentIndex < duration
+					&& currentIndex >= 0) {
+ 				currentTimelinePatternIndex.add(detailedPattern.F.get(currentIndex));
+ 				frequencyList.add(detailedPattern.freq);
+ 				elapsedTimeList.add(currentIndex);
+			}
+		}	
+		//Log.i("ma", "TimeLineData Gaining");
+		return currentTimelinePatternIndex;		
+	}
+
+	public void addFreq(String name, int frequency) {
+		IVS_Pattern checkPattern = findPattern(name);
+		if (checkPattern == null) {
+			checkPattern = new IVS_Pattern();
+			patterns.add(checkPattern);
+		}
+		checkPattern.freq = frequency;			
+	}
+	
+	public void addPatternPoint(String name, long time, double amplitude) {
+		IVS_Pattern checkPattern = findPattern(name);
+		
+		if (checkPattern == null) {
+			checkPattern = new IVS_Pattern();
+			patterns.add(checkPattern);
+		}
+		
+		PatternPoint temp = new PatternPoint();
+		temp.ampPoint = amplitude;
+		temp.timePoint = time;
+				
+		checkPattern.F.add(temp);
+	}
+	
+	public void addPattern(String name) {
+		if (findPattern(name) == null) {
+			IVS_Pattern checkPattern = new IVS_Pattern();
+			checkPattern.patternName = name;
+			
+			patterns.add(checkPattern);			
+		}
+	}
+	
+	public IVS_Pattern getPattern(String name) {
+		return findPattern(name);
+	}
+
+	public IVS_TimelinePattern addTimePattern(String name) {
+		IVS_TimelinePattern temp = findTimePattern(name);
+		if (temp == null) {
+			temp = new IVS_TimelinePattern();
+			temp.timelinePatternName = name;
+			this.timePatterns.add(temp);
+		}		
+		return temp;
+	}
+	
+	public IVS_TimelinePattern getTimePattern(String name) {
+		return findTimePattern(name);
+	}
+	public IVS_TimelinePattern getTimePattern(int position) {
+		return timePatterns.get(position);
+	}
+}

@@ -1,0 +1,563 @@
+package com.example.angry;
+
+import org.anddev.andengine.engine.Engine;
+import org.anddev.andengine.engine.camera.Camera;
+import org.anddev.andengine.engine.options.EngineOptions;
+import org.anddev.andengine.engine.options.EngineOptions.ScreenOrientation;
+import org.anddev.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
+import org.anddev.andengine.entity.primitive.Rectangle;
+import org.anddev.andengine.entity.scene.Scene;
+import org.anddev.andengine.entity.scene.Scene.IOnAreaTouchListener;
+import org.anddev.andengine.entity.scene.Scene.IOnSceneTouchListener;
+import org.anddev.andengine.entity.scene.Scene.ITouchArea;
+import org.anddev.andengine.entity.scene.background.ColorBackground;
+import org.anddev.andengine.entity.shape.Shape;
+import org.anddev.andengine.entity.sprite.AnimatedSprite;
+import org.anddev.andengine.entity.sprite.Sprite;
+import org.anddev.andengine.entity.util.FPSLogger;
+import org.anddev.andengine.extension.physics.box2d.PhysicsConnector;
+import org.anddev.andengine.extension.physics.box2d.PhysicsFactory;
+import org.anddev.andengine.extension.physics.box2d.PhysicsWorld;
+import org.anddev.andengine.input.touch.TouchEvent;
+import org.anddev.andengine.opengl.texture.Texture;
+import org.anddev.andengine.opengl.texture.TextureOptions;
+import org.anddev.andengine.opengl.texture.region.TextureRegion;
+import org.anddev.andengine.opengl.texture.region.TextureRegionFactory;
+import org.anddev.andengine.opengl.texture.region.TiledTextureRegion;
+import org.anddev.andengine.sensor.accelerometer.AccelerometerData;
+import org.anddev.andengine.sensor.accelerometer.IAccelerometerListener;
+
+import android.content.Context;
+import android.hardware.SensorManager;
+import android.os.Handler;
+import android.os.Vibrator;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.widget.Toast;
+
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.Contact;
+import com.badlogic.gdx.physics.box2d.ContactListener;
+import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
+
+import com.example.angry.StageInformation.ObjectInformation;
+
+import dynamicsHapticsLibrary.DynamicsCollisionCatcher;
+
+/**
+ * @author Nicolas Gramlich
+ * @since 18:47:08 - 19.03.2010
+ */
+public class AngryBirds extends BaseExample implements IAccelerometerListener, IOnSceneTouchListener, IOnAreaTouchListener {
+	// ===========================================================
+	// Constants
+	// ===========================================================
+
+	public static final int CAMERA_WIDTH = 640;
+	public static final int CAMERA_HEIGHT = 480;
+
+	public static final int GROUND = 0;
+	public static final int ROOF = 1;
+	public static final int LEFT = 2;
+	public static final int RIGHT = 3;
+	public static final int RECTANGLE = 4;
+	public static final int CIRCLE = 5;
+	public static final int WALLS = 6;
+	
+	private static final int LAYER_BACKGROUND = 0;
+	private static final int LAYER_WALLS = LAYER_BACKGROUND + 1;
+	private static final int LAYER_SCORE = LAYER_WALLS + 1;
+	// ===========================================================
+	// Fields
+	// ===========================================================
+
+	private Texture mTexture;
+
+	private TiledTextureRegion mBoxFaceTextureRegion;
+	private TiledTextureRegion mFaceTextureRegion;
+	private TiledTextureRegion mCircleFaceTextureRegion;
+
+	private PhysicsWorld mPhysicsWorld;
+
+	private int mFaceCount = 0;
+
+	private final Vector2 mTempVector = new Vector2();
+	
+	private StageInformation stages = new StageInformation();
+	
+	private Texture mBackgroundTexture;
+	private TextureRegion mBackgroundTextureRegion;
+
+	private Texture mOnScreenControlTexture;
+	private TextureRegion mOnScreenControlBaseTextureRegion;
+	private TextureRegion mOnScreenControlKnobTextureRegion;
+	
+	private DynamicsCollisionCatcher mContactListener = new DynamicsCollisionCatcher();
+
+	private Handler mHandler;
+	
+	private float anchorX = 0f;
+	private float anchorY = 0f;
+	private float springX = 0f;
+	private float springY = 0f;
+	private Body BirdsBody = null;
+	private int touchAction = -1;
+	private float touchX = -1;
+	private float touchY = -1;
+	long lastTime = 0;
+	
+	public static final int MENU_THROW = 101;
+	public static final int MENU_BALLS = 102;
+	public int currentMenu = MENU_BALLS;
+	
+	// ===========================================================
+	// Constructors
+	// ===========================================================
+
+	// ===========================================================
+	// Getter & Setter
+	// ===========================================================
+
+	// ===========================================================
+	// Methods for/from SuperClass/Interfaces
+	// ===========================================================
+	// Constructor
+	
+	
+	
+
+	
+   private Runnable update = new Runnable() {
+        public void run() {
+        	if (android.os.SystemClock.uptimeMillis() - lastTime > 30) {
+    			mContactListener.calculateImpulse(true);
+    			lastTime = android.os.SystemClock.uptimeMillis();
+    		}
+    	            
+            mHandler.postDelayed(update, (long) (40));
+            //mHandler.postDelayed(update, (long) 1);
+            
+        }
+    };
+	    
+
+	@Override
+	public Engine onLoadEngine() {
+		//Toast.makeText(this, "Touch the screen to add objects. Touch an object to remove it.", Toast.LENGTH_LONG).show();
+		final Camera camera = new Camera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
+
+		final EngineOptions engineOptions = new EngineOptions(true, ScreenOrientation.LANDSCAPE, new RatioResolutionPolicy(CAMERA_WIDTH, CAMERA_HEIGHT), camera);
+		engineOptions.getTouchOptions().setRunOnUpdateThread(true);
+		
+		
+		//mContactListener = new DynamicsCollisionCatcher((Vibrator) null);
+		
+		return new Engine(engineOptions);
+	}
+
+	@Override
+	public void onLoadResources() {
+		this.mTexture = new Texture(512, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+		TextureRegionFactory.setAssetBasePath("gfx/");
+		this.mBoxFaceTextureRegion = TextureRegionFactory.createTiledFromAsset(this.mTexture, this, "wall.png", 0, 0, 1, 1); // 64x32
+		this.mFaceTextureRegion =  TextureRegionFactory.createTiledFromAsset(this.mTexture, this, "face_box_tiled.png", 256, 32, 2, 1); // 64x32		
+		this.mCircleFaceTextureRegion = TextureRegionFactory.createTiledFromAsset(this.mTexture, this, "face_circle_tiled.png", 256, 0, 2, 1); // 64x32		
+		this.mEngine.getTextureManager().loadTexture(this.mTexture);
+		
+
+		this.mBackgroundTexture = new Texture(1024, 512, TextureOptions.DEFAULT);
+		this.mBackgroundTextureRegion = TextureRegionFactory.createFromAsset(this.mBackgroundTexture, this, "snake_background.png", 0, 0);
+
+		this.mOnScreenControlTexture = new Texture(256, 128, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+		this.mOnScreenControlBaseTextureRegion = TextureRegionFactory.createFromAsset(this.mOnScreenControlTexture, this, "onscreen_control_base.png", 0, 0);
+		this.mOnScreenControlKnobTextureRegion = TextureRegionFactory.createFromAsset(this.mOnScreenControlTexture, this, "onscreen_control_knob.png", 128, 0);
+
+		this.mEngine.getTextureManager().loadTextures(this.mBackgroundTexture, this.mTexture, this.mOnScreenControlTexture);
+	
+		
+		this.enableAccelerometerSensor(this);
+	}
+
+	
+	public Scene LoadBallsScene(PhysicsWorld inWorld) {
+		userdata tempUserData = new userdata(); 
+		this.mEngine.registerUpdateHandler(new FPSLogger());
+
+		final Scene scene = new Scene(2);
+		scene.setBackgroundEnabled(false);
+		scene.getLayer(LAYER_BACKGROUND).addEntity(new Sprite(0, 0, this.mBackgroundTextureRegion));
+
+		scene.setOnSceneTouchListener(this);
+		AnimatedSprite face;
+		Body body;
+		TiledTextureRegion temporalRegion;
+		
+				
+		if (inWorld == null)
+			this.mPhysicsWorld = new PhysicsWorld(new Vector2(0, -2f), false);
+		
+		final Shape ground = new Rectangle(0, CAMERA_HEIGHT - 2, CAMERA_WIDTH, 2);
+		final Shape roof = new Rectangle(0, 0, CAMERA_WIDTH, 2);
+		final Shape left = new Rectangle(0, 0, 2, CAMERA_HEIGHT);
+		final Shape right = new Rectangle(CAMERA_WIDTH - 2, 0, 2, CAMERA_HEIGHT);
+
+		
+		
+		final FixtureDef wallFixtureDef = PhysicsFactory.createFixtureDef(0, 0.5f, 0.5f);
+		tempUserData = new userdata();
+		tempUserData.objectType = ROOF;
+		(PhysicsFactory.createBoxBody(this.mPhysicsWorld, ground, BodyType.StaticBody, wallFixtureDef)).setUserData(tempUserData);
+		tempUserData = new userdata();
+		tempUserData.objectType = GROUND;
+		(PhysicsFactory.createBoxBody(this.mPhysicsWorld, roof, BodyType.StaticBody, wallFixtureDef)).setUserData(tempUserData);
+		tempUserData = new userdata();
+		tempUserData.objectType = RIGHT;
+		(PhysicsFactory.createBoxBody(this.mPhysicsWorld, left, BodyType.StaticBody, wallFixtureDef)).setUserData(tempUserData);
+		tempUserData = new userdata();
+		tempUserData.objectType = LEFT;
+		(PhysicsFactory.createBoxBody(this.mPhysicsWorld, right, BodyType.StaticBody, wallFixtureDef)).setUserData(tempUserData);
+
+		scene.getLayer(LAYER_BACKGROUND).addEntity(ground);
+		scene.getLayer(LAYER_BACKGROUND).addEntity(roof);
+		scene.getBottomLayer().addEntity(left);
+		scene.getBottomLayer().addEntity(right);
+   	
+		
+    	this.mPhysicsWorld.setContactListener(this.mContactListener);
+    	
+		scene.registerUpdateHandler(this.mPhysicsWorld);
+
+		scene.setOnAreaTouchListener(this);
+
+        mHandler = new Handler();
+        mHandler.post(update);
+
+        mEngine.setScene(scene);
+		return scene;		
+	}
+	
+	public Scene LoadThrowScene(PhysicsWorld inWorld) {
+		userdata tempUserData = new userdata(); 
+		this.mEngine.registerUpdateHandler(new FPSLogger());
+
+		final Scene scene = new Scene(2);
+		scene.setBackgroundEnabled(false);
+		scene.getLayer(LAYER_BACKGROUND).addEntity(new Sprite(0, 0, this.mBackgroundTextureRegion));
+
+		scene.setOnSceneTouchListener(this);
+		AnimatedSprite face;
+		Body body;
+		TiledTextureRegion temporalRegion;
+		
+				
+
+		//if (inWorld == null)
+			this.mPhysicsWorld = new PhysicsWorld(new Vector2(0, -2f), false);
+		
+		stages.stageInformationLoading(CAMERA_HEIGHT, CAMERA_WIDTH, 1);
+	
+		final Shape ground = new Rectangle(0, CAMERA_HEIGHT - 2, CAMERA_WIDTH, 2);
+		final Shape roof = new Rectangle(0, 0, CAMERA_WIDTH, 2);
+		final Shape left = new Rectangle(0, 0, 2, CAMERA_HEIGHT);
+		final Shape right = new Rectangle(CAMERA_WIDTH - 2, 0, 2, CAMERA_HEIGHT);
+
+		
+		
+		final FixtureDef wallFixtureDef = PhysicsFactory.createFixtureDef(0, 0.5f, 0.5f);
+		tempUserData = new userdata();
+		tempUserData.objectType = ROOF;
+		(PhysicsFactory.createBoxBody(this.mPhysicsWorld, ground, BodyType.StaticBody, wallFixtureDef)).setUserData(tempUserData);
+		tempUserData = new userdata();
+		tempUserData.objectType = GROUND;
+		(PhysicsFactory.createBoxBody(this.mPhysicsWorld, roof, BodyType.StaticBody, wallFixtureDef)).setUserData(tempUserData);
+		tempUserData = new userdata();
+		tempUserData.objectType = RIGHT;
+		(PhysicsFactory.createBoxBody(this.mPhysicsWorld, left, BodyType.StaticBody, wallFixtureDef)).setUserData(tempUserData);
+		tempUserData = new userdata();
+		tempUserData.objectType = LEFT;
+		(PhysicsFactory.createBoxBody(this.mPhysicsWorld, right, BodyType.StaticBody, wallFixtureDef)).setUserData(tempUserData);
+
+		scene.getLayer(LAYER_BACKGROUND).addEntity(ground);
+		scene.getLayer(LAYER_BACKGROUND).addEntity(roof);
+		scene.getBottomLayer().addEntity(left);
+		scene.getBottomLayer().addEntity(right);
+
+		
+		
+    	ObjectInformation temp;
+    	FixtureDef objectFixtureDef;
+    	
+    	for (int i = 0; i < stages.stage.size(); i++) {
+    		temp = stages.stage.get(i);
+    		
+    		switch(temp.getShapeType()) {
+    		case 0: // rectangle    			
+    			this.mFaceCount++;
+
+    			if (temp.getObjectType() == 9) {
+    				temporalRegion = this.mFaceTextureRegion.clone();
+    			}
+    			else {
+    				temporalRegion = this.mBoxFaceTextureRegion.clone();
+        			temporalRegion.setWidth((int)temp.getWidth());
+        			temporalRegion.setHeight((int)temp.getHeight());    				
+    			}
+    			
+    			objectFixtureDef = PhysicsFactory.createFixtureDef(temp.getDensity(), temp.getRestitution(), temp.getFriction());
+
+    			
+				face = new AnimatedSprite(temp.getPosition().x, temp.getPosition().y, temporalRegion);
+				
+				face.setRotation(180);
+				body = PhysicsFactory.createBoxBody(this.mPhysicsWorld, face, BodyType.DynamicBody, objectFixtureDef);
+				tempUserData = new userdata();
+				if (temp.getObjectType() == 9) 
+					tempUserData.objectType = RECTANGLE;
+				else tempUserData.objectType = WALLS;
+				body.setUserData(tempUserData);
+				
+				mContactListener.addHapticObjects(body);
+				if (temp.getObjectType() == 9) face.animate(200, true);
+				
+
+				face.setUpdatePhysics(false);
+
+    			scene.registerTouchArea(face);
+    			scene.getLayer(LAYER_WALLS).addEntity(face);
+    			this.mPhysicsWorld.registerPhysicsConnector(new PhysicsConnector(face, body, true, true, false, false));
+    			
+    			
+    			    			
+    			break;
+    			
+			case 1: // circle
+				
+    			this.mFaceCount++;
+
+    			temporalRegion = this.mCircleFaceTextureRegion.clone();
+    			//temporalRegion.setWidth((int)temp.getRadius());
+    			//temporalRegion.setHeight((int)temp.getRadius());
+    			objectFixtureDef = PhysicsFactory.createFixtureDef(temp.getDensity(), temp.getRestitution(), temp.getFriction());
+
+    			
+				face = new AnimatedSprite(temp.getPosition().x, temp.getPosition().y, temporalRegion);
+				
+				face.setRotation(180);
+				body = PhysicsFactory.createCircleBody(this.mPhysicsWorld, face, BodyType.DynamicBody, objectFixtureDef);
+				face.animate(200, true);
+				tempUserData = new userdata();
+				tempUserData.objectType = CIRCLE;
+				body.setUserData(tempUserData);
+
+
+				face.setUpdatePhysics(false);
+
+    			scene.registerTouchArea(face);
+    			scene.getLayer(LAYER_WALLS).addEntity(face);
+    			this.mPhysicsWorld.registerPhysicsConnector(new PhysicsConnector(face, body, true, true, false, false));
+    			
+    			BirdsBody = body;
+    			
+    			break;
+    		}
+		}
+    	
+    	stages.freeInformation();          	
+		
+    	this.mPhysicsWorld.setContactListener(this.mContactListener);
+    	
+		scene.registerUpdateHandler(this.mPhysicsWorld);
+
+
+		scene.setOnAreaTouchListener(this);
+
+        mHandler = new Handler();
+        mHandler.post(update);
+        mEngine.setScene(scene);
+		return scene;
+	}
+	
+	@Override
+	public Scene onLoadScene() {
+		if (currentMenu == MENU_THROW)
+			return LoadThrowScene(null);
+		else if (currentMenu == MENU_BALLS)
+			return LoadBallsScene(null);
+		return null;
+	}
+
+	@Override
+	public boolean onAreaTouched(final TouchEvent pSceneTouchEvent, final ITouchArea pTouchArea, final float pTouchAreaLocalX, final float pTouchAreaLocalY) {	
+		if (currentMenu == MENU_BALLS) {
+			if(pSceneTouchEvent.getAction() == TouchEvent.ACTION_DOWN) {
+				AngryBirds.this.removeFace((AnimatedSprite)pTouchArea);
+				return true;
+			}
+		}
+		return true;
+	}
+
+	public void onLoadComplete() {
+
+	}
+
+	@Override
+	public boolean onSceneTouchEvent(final Scene pScene, final TouchEvent pSceneTouchEvent) {
+		if (currentMenu == MENU_THROW) {			
+			touchAction = pSceneTouchEvent.getAction();
+			touchX = pSceneTouchEvent.getX();
+			touchY = pSceneTouchEvent.getY();
+			
+			if (touchAction == TouchEvent.ACTION_DOWN) {
+				anchorX = touchX;
+				anchorY = touchY;
+				springX = touchX;
+				springY = touchY;			
+			}
+			else if (touchAction == TouchEvent.ACTION_MOVE) {
+				springX = touchX;
+				springY = touchY;			
+			}
+			else if (touchAction == TouchEvent.ACTION_UP) {
+				BirdsBody.applyForce(new Vector2(100f * -(springX - anchorX),100f * -(springY - anchorY)), BirdsBody.getPosition());
+				//mContactListener.vibrationModule.playVibration(mContactListener.vibrationModule.IVS_API, 
+						//"TimeCheck", (float)1.0, (float)1.0);
+				//mContactListener.vibrationModule.playVibration(mContactListener.vibrationModule.IVS_API, 
+						//"100", (float)1.0, (float)1.0);
+			}
+		}
+		else if (currentMenu == MENU_BALLS) {		
+			if(this.mPhysicsWorld != null) {
+				if(pSceneTouchEvent.getAction() == TouchEvent.ACTION_DOWN) {
+					this.addFace(pSceneTouchEvent.getX(), pSceneTouchEvent.getY());
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public void onAccelerometerChanged(final AccelerometerData pAccelerometerData) {
+		//this.mTempVector.set(-pAccelerometerData.getY(), -pAccelerometerData.getX());
+		this.mTempVector.set(-pAccelerometerData.getX(), pAccelerometerData.getY());
+
+		this.mPhysicsWorld.setGravity(this.mTempVector);
+	}
+
+	// ===========================================================
+	// Methods
+	// ===========================================================
+
+	private void addFace(final float pX, final float pY) {		
+		final Scene scene = this.mEngine.getScene();
+		TiledTextureRegion temporalRegion;
+		userdata tempUserData;
+		this.mFaceCount++;
+
+		final AnimatedSprite face;
+		final Body body;
+
+		final FixtureDef objectFixtureDef = PhysicsFactory.createFixtureDef(1, 0.5f, 0.5f);
+	
+		this.mFaceCount++;
+
+		temporalRegion = this.mCircleFaceTextureRegion.clone();
+
+	
+		face = new AnimatedSprite(pX, pY, temporalRegion);
+		
+		face.setRotation(180);
+		body = PhysicsFactory.createCircleBody(this.mPhysicsWorld, face, BodyType.DynamicBody, objectFixtureDef);
+		face.animate(200, true);
+		
+		tempUserData = new userdata();
+		tempUserData.objectType = CIRCLE;
+		body.setUserData(tempUserData);			
+
+		face.setUpdatePhysics(false);
+
+		scene.registerTouchArea(face);
+		scene.getLayer(LAYER_WALLS).addEntity(face);
+		this.mPhysicsWorld.registerPhysicsConnector(new PhysicsConnector(face, body, true, true, false, false));		    			
+
+	}
+
+	private void removeFace(final AnimatedSprite face) {
+		final Scene scene = this.mEngine.getScene();
+
+		final PhysicsConnector facePhysicsConnector = this.mPhysicsWorld.getPhysicsConnectorManager().findPhysicsConnectorByShape(face);
+
+		this.mPhysicsWorld.unregisterPhysicsConnector(facePhysicsConnector);
+		this.mPhysicsWorld.destroyBody(facePhysicsConnector.getBody());
+
+		scene.unregisterTouchArea(face);
+		scene.getTopLayer().removeEntity(face);
+	}
+	// ===========================================================
+	// Inner and Anonymous Classes
+	// ===========================================================
+
+
+	@Override
+	public boolean onCreateOptionsMenu(final Menu pMenu) {
+		pMenu.add(Menu.NONE, MENU_THROW, 0, "Ball Throwing");
+		pMenu.add(Menu.NONE, MENU_BALLS, 1, "Balls");
+		return super.onCreateOptionsMenu(pMenu);
+	}
+
+	@Override
+	public boolean onPrepareOptionsMenu(final Menu pMenu) {
+		//pMenu.findItem(MENU_TRACE).setTitle(this.mEngine.isMethodTracing() ? "Stop Method Tracing" : "Start Method Tracing");
+		return super.onPrepareOptionsMenu(pMenu);
+	}
+
+	@Override
+	public boolean onMenuItemSelected(final int pFeatureId, final MenuItem pItem) {
+		final Scene scene;
+		switch(pItem.getItemId()) {
+			case MENU_THROW:
+				// Throw를 위한 체크
+				if (currentMenu == MENU_THROW) return true;
+				currentMenu = MENU_THROW;			
+				this.mPhysicsWorld.clearPhysicsConnectors();
+				this.mPhysicsWorld.reset();
+				
+				LoadThrowScene(this.mPhysicsWorld);
+
+				this.disableAccelerometerSensor();
+				mContactListener.gain = 1f;
+				return true;
+			case MENU_BALLS:
+				if (currentMenu == MENU_BALLS) return true;
+				currentMenu = MENU_BALLS;
+				this.mPhysicsWorld.clearPhysicsConnectors();
+				this.mPhysicsWorld.reset();
+				
+				LoadBallsScene(this.mPhysicsWorld);
+				
+				this.enableAccelerometerSensor(this);
+				mContactListener.gain = 2f;
+				
+				return true;
+			default:
+				return super.onMenuItemSelected(pFeatureId, pItem);
+		}
+	}
+	
+	
+	public class userdata {
+		public int objectType;
+		public int getType() {
+			return this.objectType;
+		}
+		public void setType(int inType) {
+			this.objectType = inType;
+		}
+	}
+}
+

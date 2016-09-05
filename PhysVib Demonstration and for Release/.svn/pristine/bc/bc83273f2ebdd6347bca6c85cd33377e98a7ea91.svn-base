@@ -1,0 +1,177 @@
+package net.jbong.AudioVibDrive;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import dynamicsHapticsLibrary.DynamicsVibrationManager;
+import dynamicsHapticsLibrary.PatternPoint;
+import android.media.AudioTrack;
+import android.util.Log;
+import net.jbong.AudioVibDrive.VibListInfo;
+
+public class AudioVibDriveContinuous extends AudioVibDrive {
+	private boolean mIsRun = false;
+	
+	private int mFrameSize;
+	
+	private double mAudioSignalMagFactor = 1.0;
+	
+	public VibListInfo listInfo;
+	
+	private int durationToBufSize(int duration) {
+		return (duration * MyAudioTrack.SAMPLE_RATE / 1000);
+	}
+	
+	public AudioVibDriveContinuous(int frameSize) {
+		mAudioTrack = new MyAudioTrack(AudioTrack.MODE_STREAM, 65536);
+		
+		mFrameSize = durationToBufSize(frameSize);
+		initBuf(mFrameSize);
+		
+		this.mIsRun = true;
+
+		new Thread() {
+			@Override
+			public void run() {
+				if (mAudioTrack == null) {
+					mAudioTrack = new MyAudioTrack(AudioTrack.MODE_STREAM, 65536);
+					initBuf(mFrameSize);
+				}
+				
+				mAudioTrack.play();
+				listInfo = new VibListInfo();
+				mIsRun = true;
+				
+				while (mIsRun) {
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+					if (listInfo.isFilled()) {	
+						Log.i("ma", "FilledEvents");
+						generateVibSignal(listInfo.patternList, listInfo.frequencyList,  listInfo.elapsedTimeList, mFrameSize);
+						
+						mAudioTrack.write(mVibBuffer, mVibBuffer, mVibBuffer.length);
+						
+						listInfo.releaseLists();
+						if (listInfo.isFilled()) {
+							Log.i("ma", "Here is error!");
+						}
+					}
+					else {
+						Log.i("ma", "EmptyEvents");
+						generateVibSignal(null, null, null, mFrameSize);
+						mAudioTrack.write(mVibBuffer, mVibBuffer, mVibBuffer.length);						
+					}
+					/*
+					else {
+						short[] vibSamples = mOnNextDriveListener.onNextVibSample();
+						if (vibSamples != null)
+							mAudioTrack.write(samples, vibSamples, samples.length);
+						else {
+							for (int i = 0; i < mFrameSize; i++) {
+								double t = (double)samples[i] * mAudioSignalMagFactor;
+								if (t >= Short.MAX_VALUE)
+									t = Short.MAX_VALUE - 1;
+								else if (t <= Short.MIN_VALUE)
+									t = Short.MIN_VALUE + 1;
+								mVibBuffer[i] = (short)t;
+							}
+							mVibBuffer[mFrameSize - 1] = 0;
+							
+							mAudioTrack.write(samples, mVibBuffer, samples.length);
+						}
+					}*/
+				}
+				
+				mAudioTrack.flush();
+				mAudioTrack.stop();
+				
+				mAudioTrack.release();
+			}		
+		}.start();
+	}
+	
+	public AudioVibDriveContinuous(int frameSize, double audioSignalMagFactor) {
+		this(frameSize);
+		
+		mAudioSignalMagFactor = audioSignalMagFactor;
+	}
+	
+	public void stop() {
+		mIsRun = false;
+	}
+	
+	public boolean isRunning() {
+		return mIsRun;
+	}
+
+	/*
+	public void run() {
+		mAudioTrack.play();
+		
+		while (mIsRun) {
+			short[] samples = mOnNextDriveListener.onNextSample();
+			
+			VibInfo vibInfo = mOnNextDriveListener.onNextVibration();
+			if (vibInfo != null) {
+				generateVibSignal(vibInfo.freq1, vibInfo.freq2, vibInfo.amp1, vibInfo.amp2, mFrameSize);
+				
+				mAudioTrack.write(samples, mVibBuffer, samples.length);
+			}
+			else {
+				short[] vibSamples = mOnNextDriveListener.onNextVibSample();
+				if (vibSamples != null)
+					mAudioTrack.write(samples, vibSamples, samples.length);
+				else {
+					for (int i = 0; i < mFrameSize; i++) {
+						double t = (double)samples[i] * mAudioSignalMagFactor;
+						if (t >= Short.MAX_VALUE)
+							t = Short.MAX_VALUE - 1;
+						else if (t <= Short.MIN_VALUE)
+							t = Short.MIN_VALUE + 1;
+						mVibBuffer[i] = (short)t;
+					}
+					mVibBuffer[mFrameSize - 1] = 0;
+					
+					mAudioTrack.write(samples, mVibBuffer, samples.length);
+				}
+			}
+		}
+		
+		mAudioTrack.flush();
+		mAudioTrack.stop();
+		
+		mAudioTrack.release();
+	}
+	*/
+	
+/*
+	public void setOnNextDriveListener(OnNextDriveListener l) {
+		mOnNextDriveListener = l;
+    }
+	
+	
+	public interface OnNextDriveListener {
+		public short[] onNextSample();
+		public VibListInfo onNextVibration();
+		public short[] onNextVibSample();
+	}
+	
+	public class VibInfo {
+		public int freq1;
+		public int freq2;
+		public double amp1;
+		public double amp2;
+		
+		public VibInfo(int freq1, int freq2, double amp1, double amp2) {
+			this.freq1 = freq1;
+			this.freq2 = freq2;
+			this.amp1 = amp1;
+			this.amp2 = amp2;
+		}
+	}*/		
+}

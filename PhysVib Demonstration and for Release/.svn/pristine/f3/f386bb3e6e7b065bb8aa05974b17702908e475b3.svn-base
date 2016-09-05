@@ -1,0 +1,83 @@
+package dynamicsHapticsLibrary;
+
+import java.util.ArrayList;
+import java.util.List;
+
+class IVS_TimelinePattern {
+	int internalIndex;
+	int size;
+	int duration;
+	boolean sorted;
+	List<TimelinePatternPoint> patterns;
+	
+	String timelinePatternName;
+	
+	IVS_TimelinePattern() {
+		timelinePatternName = null;
+		patterns = new ArrayList<TimelinePatternPoint>();
+		internalIndex = 0;
+		sorted = false;
+		size = 0;
+	}
+
+	protected TimelinePatternPoint findPattern(String name, int time) {
+		TimelinePatternPoint checkPattern;
+		for (int i = 0; i < patterns.size(); i++) {
+			checkPattern = patterns.get(i);
+			if (checkPattern.patternName != null) {
+ 				if (checkPattern.patternName.equals(name) && checkPattern.launchTime == time) {
+					return checkPattern;
+				}
+			}
+		}
+		return null;		
+	}
+	
+	public void addTimePatternPoint(String name, int time) {
+		TimelinePatternPoint checkPattern = findPattern(name, 0);
+		
+		if (checkPattern == null) {
+			checkPattern = new TimelinePatternPoint();
+			checkPattern.patternName = name;
+			checkPattern.launchTime = time;
+			patterns.add(checkPattern);
+		}
+		sorted = false;
+		size++;
+	}
+
+	public void sortTimePatternPoint() {
+		TimelinePatternPoint temp;
+		for (int i = 0; i < patterns.size(); i++) {
+			for (int j = i; i < patterns.size(); i++) {
+				if ((patterns.get(i)).launchTime > (patterns.get(j)).launchTime) {
+					temp = patterns.get(i);
+					patterns.set(i, patterns.get(j));
+					patterns.set(j, temp);				
+				}
+			}
+		}
+		sorted = true;
+	}
+	
+	public TimelinePatternPoint getPattern(int index) {
+		if (sorted == false) sortTimePatternPoint();
+		TimelinePatternPoint checkPattern;
+		for (int i = 0; i < patterns.size(); i++) {
+			checkPattern = patterns.get(i);
+			if (checkPattern.launchTime >= index * 10) {
+ 				return checkPattern;				
+			}
+		}
+		return null;		
+	}	
+
+	class TimelinePatternPoint {
+			String patternName;
+			int launchTime;
+			TimelinePatternPoint() {
+				patternName = null;
+				launchTime = 0;
+			}
+	}
+}
