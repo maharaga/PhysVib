@@ -1,4 +1,4 @@
-0. Introduction
+A. Introduction
 
 This project is about PhysVib: a software library extending a physics engine for
 the automated vibrotactile feedback generation to collision events.
@@ -11,7 +11,7 @@ application, and how to use it.
 
 
 
-1. Structure
+B. Structure
 
 Basically PhysVib extends the Box2D to provide the vibrotactile feedback in the
 form of the exponentially decaying sinusoid. It needs two external parameters
@@ -45,7 +45,7 @@ this type of converter.
 
 
 
-2. A Demonstration Application
+C. A Demonstration Application
 
 In the release, we added a project for a demonstration named "PhysVib Demonstration
 and for Release". This demo application renders three different object pairs
@@ -62,4 +62,41 @@ the objects, and triggers the collision catcher.
 
 
 
-3. How to Use
+D. How to Use
+
+Initialization: 
+
+1) Assign an instance of CollisionCatcher to the physicsworld using setContactListener();
+
+2) Assign a handler in an instance of VibrationConverter to the VibrationManager using 
+setCurrentVibrationAPI()
+
+3) Set a pixel to meter ratio 
+
+4) Set a pixel value of the longest axis on the screen 
+
+5) Set true or false to the automatical control of normalization variables 
+
+6) Set the minimum impulse value to be rendered
+
+These initialization example is in the example.demonstration.ExampleDemonstration.java 
+as a method with a name of "initializePhysVib()".
+
+Object Creation: 
+
+1) Create an object as ordinary AndEngine application does. 
+
+2) Create a userdata instance and set the variables of frequency, decayrate, density, 
+mass (if the object is static), and haptic camera variable. 
+
+3) Assign the userdata instance to a fixture of the created object.
+
+Vibration Trigger: 
+
+1) Create a thread that regularly updates 
+
+2) Call "setTrigger()" of the instance of CollisionCatcher 
+
+3) If an object is added or removed in a scene, call "checkMass()" of the instance of
+CollisionCatcher.
+
